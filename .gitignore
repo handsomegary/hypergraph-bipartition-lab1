@@ -1,0 +1,15 @@
+Lab1
+Lab1.exe
+.build/
+__pycache__/
+*.o
+*.obj
+*.exe
+output.txt
+*.part.2
+qa/
+*.pptx
+*.aux
+*.log
+*.out
+*.synctex.gz

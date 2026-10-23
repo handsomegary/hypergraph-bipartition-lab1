@@ -1,0 +1,25 @@
+{
+  "description": "Original assignment PDF and three provided inputs, preserved byte for byte.",
+  "files": [
+    {
+      "path": "docs/lab1_partition_2023.pdf",
+      "bytes": 138472,
+      "sha256": "2cbf208a7a044d794ed6b418159d9d83b4a7eba0a096ad9ca684c075f690e64d"
+    },
+    {
+      "path": "benchmarks/input.hgr",
+      "bytes": 19,
+      "sha256": "179bfccbb309ecb34b239eae371eb2cff777f90cd544310ad36caee4a3b881ab"
+    },
+    {
+      "path": "benchmarks/input2.txt.hgr",
+      "bytes": 106219,
+      "sha256": "3b01640fe2e652b8497478936de63aeab2c4f63ee89cf4567411f64adb3b64e1"
+    },
+    {
+      "path": "benchmarks/input3.txt.hgr",
+      "bytes": 1814426,
+      "sha256": "af0e2be8bc99161f07fa1a4e9552e7b5faa19bf5c139a053a1343cf6b3853193"
+    }
+  ]
+}

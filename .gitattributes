@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.tex text eol=lf
+Makefile text eol=lf
+*.yml text eol=lf
+*.pdf binary
+benchmarks/*.hgr -text

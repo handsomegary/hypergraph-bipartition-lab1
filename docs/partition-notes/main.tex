@@ -1,0 +1,97 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\title{Notes on Balanced Hypergraph Bipartitioning}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+These notes summarize the supplied introductory slide deck in original prose. They describe the general partitioning ideas behind the lab. The mathematical definitions and the explanation of the best-prefix rule make the slide diagrams explicit. They do not certify that a particular program implements every data structure or complexity bound discussed here. The repository's implementation documentation describes the actual solver.
+
+\section{Problem and representation}
+
+A hypergraph is a pair $H=(V,E)$, where $V$ is the set of vertices and each net $e\in E$ is a subset of $V$. A two-way partition assigns each vertex to one of two disjoint groups $A$ and $B$ with $A\cup B=V$. A net contributes one unit to the objective when it touches both groups. The unweighted cut objective is therefore
+\[
+ C(A,B)=\sum_{e\in E}\mathbf{1}\{e\cap A\ne\varnothing\text{ and }e\cap B\ne\varnothing\}.
+\]
+A hyperedge can contain many vertices. Replacing it with all possible pairs of vertices changes this objective and can overcount a cut net.
+
+The netlist stores the number of nets and the number of vertices on its first line. Each later line identifies the vertices incident to one net. The output gives one group label for every vertex, in increasing vertex order. Every label is either zero or one.
+
+The nominal balance target places about half of the vertices in each group, with a stated range of $45\%$ to $55\%$. For compatibility with the supplied checker, the integer limits are
+\[
+ L=\left\lfloor 0.45|V|\right\rfloor,
+ \qquad U=|V|-L,
+ \qquad L\le |A|,|B|\le U.
+\]
+The rounding can widen the actual percentage range on small instances. For instance, two vertices in one group and three in the other satisfy these integer limits when $|V|=5$.
+
+A terminal, also called a pin, is one incidence between a vertex and a net. If $n=|V|$, $m=|E|$, and $P=\sum_{e\in E}|e|$, then $P$ measures the total incidence data that a refinement pass must process. For nets containing between two and $n$ distinct vertices, the appropriate bound is $2m\le P\le mn$. A bound in terms of $2n$ additionally requires assumptions about vertex degrees. On sparse instances, $P$ can grow roughly in proportion to $n$, but this is a property of the input family rather than a universal law.
+
+\section{Kernighan-Lin and Fiduccia-Mattheyses refinement}
+
+The slides compare Kernighan-Lin (KL) and Fiduccia-Mattheyses (FM) refinement. Both start with a partition and improve it through a sequence of passes. During a pass, the algorithm selects a promising move, locks the affected vertices, and continues exploring moves before choosing the state to retain.
+
+Classical KL refinement exchanges a pair of vertices across the partition. Such an exchange preserves the two group sizes. FM refinement moves a single vertex at a time and checks the resulting group sizes against the allowed balance range. This flexibility fits hypergraphs and permits temporary changes in group sizes within that range.
+
+The slides present random initialization as a common starting point. A random initial partition can help explore different regions of the search space, but it must obey the balance rule and undergo optimization. The lab explicitly rejects arbitrary random output. Deterministic initialization and deterministic tie breaking are also possible.
+
+The introductory complexity comparison gives $O(Rn^3)$ for a straightforward KL implementation and $O(RP)$ for classical FM over $R$ passes. These bounds describe the implementations assumed in that comparison. FM's linear-pass bound depends on suitable gain buckets and efficient incidence updates. Recomputing every gain after every move or scanning every vertex for each selection can cost substantially more.
+
+\section{Move gains and candidate selection}
+
+For an unlocked vertex $v$, its move gain is the decrease in the cut objective caused by moving it to the other group:
+\[
+ g(v)=C_{\mathrm{before}}-C_{\mathrm{after}}.
+\]
+A positive gain reduces the number of cut nets. A zero gain leaves it unchanged. A negative gain increases the cut, although a negative move can expose a later sequence with a better overall result.
+
+The gain can be computed from the nets incident to $v$. Let $F_e$ be the number of vertices in $e$ currently in the same group as $v$, including $v$, and let $T_e$ be the number in the opposite group. Moving $v$ removes a cut when $F_e=1$ and $T_e>0$. It creates a cut when $T_e=0$ and $F_e>1$. Consequently,
+\[
+ g(v)=\sum_{e\ni v}
+ \left(\mathbf{1}\{F_e=1,\ T_e>0\}
+       -\mathbf{1}\{T_e=0,\ F_e>1\}\right).
+\]
+A singleton net contributes zero under this expression because it cannot cross a partition.
+
+Gain buckets group unlocked vertices by their integer gain. A candidate must meet both requirements: it has a high gain among the available moves, and its move leaves the partition within the permitted balance limits. Separate candidate structures for the two source groups can make these feasibility checks easier. A stable tie-breaking rule makes repeated runs reproducible.
+
+After moving a vertex, the algorithm locks it for the rest of the pass. Locking prevents immediate reversal and limits how often a vertex participates in that pass. When the next pass begins, the algorithm unlocks the vertices and builds candidate information for the retained partition.
+
+\section{Local updates and the best prefix}
+
+A move can change the gains of other vertices through shared nets. The diagrams in the slides illustrate this locality: the moved vertex connects to several incident nets, and each such net reaches the vertices whose gains may change. A vertex that shares no incident net with the moved vertex has no direct gain change from that move. Implementations maintain per-net group counts so that they can identify changes when a group count crosses a critical value such as zero or one.
+
+The gain list must reflect the current partition. An implementation removes stale bucket entries or updates them explicitly. It also excludes locked vertices from later selections. The exact update strategy affects performance even when the gain definition remains the same.
+
+Let a pass make $k$ moves with recorded gains $g_1,\ldots,g_k$. The cumulative improvement after move $j$ is
+\[
+ G_j=\sum_{i=1}^{j}g_i,\qquad G_0=0.
+\]
+The pass retains the best feasible prefix, including the empty prefix:
+\[
+ j^*\in\operatorname*{arg\,max}_{0\le j\le k}G_j.
+\]
+It undoes moves after $j^*$ and keeps the first $j^*$ moves. This rule matters because the best state can occur in the middle of a pass. The cumulative-gain curves in the introductory material rise to a peak and then fall as additional locked moves continue. Keeping only the last state would discard the earlier improvement.
+
+If the best cumulative gain is positive, the retained prefix lowers the cut and another pass may help. If no prefix has positive gain, that pass cannot improve the starting partition. A practical solver also stops when its pass limit or execution budget is reached. The best legal partition found so far remains the result.
+
+\section{Execution and reference comparison}
+
+The lab's command-line contract builds an executable named \texttt{Lab1}, invokes it with an input path, and writes \texttt{output.txt} in the current working directory. The PDF uses that capitalized executable name. One slide uses a lowercase spelling, so the repository follows the PDF rule.
+
+The supplied reference tool accepts the form \texttt{shmetis input.hgr 2 5} and writes the assignment file \texttt{input.hgr.part.2}. This selects two groups and passes an imbalance parameter of five to the reference tool. Its output still needs evaluation under the same objective and integer balance limits as the solution.
+
+The supplied checker accepts an input path and an assignment path. The original tools are Linux executables, so using them may require an appropriate Linux environment and executable file permissions. The slides illustrate changing executable permissions with \texttt{chmod 755}. A source implementation that uses the standard C++ library does not need a special institutional machine merely to compile and produce assignments. Local testing can compare its output with the supplied tools when those tools are available.
+
+The original evaluation gives cut quality priority over running time and imposes a $30$-second limit per input. A useful comparison therefore records legality, cut-net count, and elapsed time together. An improved cut that violates balance is not a valid improvement. Results from available inputs also do not determine performance on hidden inputs.
+
+\end{document}
